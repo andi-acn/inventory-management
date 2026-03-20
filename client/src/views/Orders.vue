@@ -8,6 +8,41 @@
     <div v-if="loading" class="loading">{{ t('common.loading') }}</div>
     <div v-else-if="error" class="error">{{ error }}</div>
     <div v-else>
+
+      <!-- Submitted Restocking Orders collapsible section -->
+      <div v-if="restockOrders.length > 0" class="card restock-section">
+        <div class="card-header restock-header" @click="restockSectionOpen = !restockSectionOpen">
+          <h3 class="card-title">Submitted Restocking Orders ({{ restockOrders.length }})</h3>
+          <span class="toggle-icon">{{ restockSectionOpen ? '▼' : '▶' }}</span>
+        </div>
+        <div v-if="restockSectionOpen" class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Order #</th>
+                <th>Items</th>
+                <th>Status</th>
+                <th>Order Date</th>
+                <th>Expected Delivery</th>
+                <th>Lead Time</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="order in restockOrders" :key="order.id">
+                <td><strong>{{ order.order_number }}</strong></td>
+                <td>{{ order.items.length }} item{{ order.items.length === 1 ? '' : 's' }}</td>
+                <td><span class="badge info">Submitted</span></td>
+                <td>{{ formatDate(order.order_date) }}</td>
+                <td>{{ formatDate(order.expected_delivery) }}</td>
+                <td>{{ leadTimeLabel(order.expected_delivery) }}</td>
+                <td><strong>${{ order.total_value.toLocaleString() }}</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="stats-grid">
         <div class="stat-card success">
           <div class="stat-label">{{ t('status.delivered') }}</div>
@@ -95,6 +130,7 @@ export default {
     const loading = ref(true)
     const error = ref(null)
     const orders = ref([])
+    const restockSectionOpen = ref(true)
 
     // Use shared filters
     const {
@@ -129,6 +165,21 @@ export default {
       loadOrders()
     })
 
+    // Restocking orders: status === 'Submitted'
+    const restockOrders = computed(() => {
+      return orders.value.filter(o => o.status === 'Submitted')
+    })
+
+    const leadTimeLabel = (deliveryDate) => {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const delivery = new Date(deliveryDate)
+      delivery.setHours(0, 0, 0, 0)
+      const days = Math.round((delivery - today) / (1000 * 60 * 60 * 24))
+      if (days <= 0) return 'Delivered'
+      return `Delivery in ${days} day${days === 1 ? '' : 's'}`
+    }
+
     const getOrdersByStatus = (status) => {
       return orders.value.filter(order => order.status === status)
     }
@@ -160,6 +211,9 @@ export default {
       loading,
       error,
       orders,
+      restockOrders,
+      restockSectionOpen,
+      leadTimeLabel,
       getOrdersByStatus,
       getOrderStatusClass,
       formatDate,
@@ -172,6 +226,26 @@ export default {
 </script>
 
 <style scoped>
+/* Restocking collapsible section */
+.restock-section {
+  margin-bottom: 1.25rem;
+}
+
+.restock-header {
+  cursor: pointer;
+  user-select: none;
+}
+
+.restock-header:hover {
+  background: #f8fafc;
+  border-radius: 8px 8px 0 0;
+}
+
+.toggle-icon {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
 /* Fixed table layout to prevent column shifting */
 .orders-table {
   table-layout: fixed;
